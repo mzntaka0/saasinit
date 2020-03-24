@@ -1,0 +1,44 @@
+version: "3"
+services:
+  app:
+    build: .
+    container_name: next_app
+    environment:
+      DATABASE_URL: postgres://${DB_USER}:${DB_PASSWORD}@db/${DB_NAME}
+      DJANGO_MANAGEPY_MIGRATE: "on"
+    depends_on:
+      - db
+    ports:
+      - "8000:8000"
+  db:
+    build:
+      context: postgresql
+    container_name: next_db
+    restart: always
+    ports:
+      - "5431:5432"
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - PGPASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+      - DATABASE_HOST=${DB_HOST}
+      - DATABASE_PORT=${DB_PORT}
+      - PGDATA=/var/lib/postgresql/data/db-files/
+    volumes:
+      #- ${PWD}/docker/db/init:/docker-entrypoint-initdb.d
+      - data:/var/lib/postgresql/data
+  nginx:
+    build:
+      context: nginx
+    container_name: next_nginx
+    restart: always
+    depends_on:
+      - app
+    ports:
+      - "8080:80"
+    volumes:
+      - "./nginx/:/etc/nginx/"
+      #- "staticdata:/opt/apps/static/"
+volumes:
+  data: {}

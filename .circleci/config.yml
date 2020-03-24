@@ -1,0 +1,86 @@
+# Python CircleCI 2.0 configuration file
+#
+# Check https://circleci.com/docs/2.0/language-python/ for more details
+#
+version: 2
+jobs:
+  build:
+    docker:
+      # specify the version you desire here
+      # use `-browsers` prefix for selenium tests, e.g. `3.6.1-browsers`
+      - image: docker:18.09.0
+
+      # Specify service dependencies here if necessary
+      # CircleCI maintains a library of pre-built images
+      # documented at https://circleci.com/docs/2.0/circleci-images/
+      # - image: circleci/postgres:9.4
+
+# working_directory: ~/repo
+
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+          name: install aws cli
+          command: |
+            apk add --no-cache --update py-pip
+            pip install awscli
+      - run:
+          name: show ecr domain
+          command: |
+            echo ${ECR_DOMAIN}
+      - run:
+          name: login ecr
+          command: |
+            $(aws ecr get-login --no-include-email --region ap-northeast-1)
+      - run:
+          name: build image
+          command: |
+            docker build -t ${ECR_DOMAIN}:$CIRCLE_SHA1 -t ${ECR_DOMAIN}:latest .
+      - run:
+          name: push docker image
+          command: |
+            docker push ${ECR_DOMAIN}:$CIRCLE_SHA1
+            docker push ${ECR_DOMAIN}:latest
+  deploy:
+    docker:
+      - image: circleci/python:3.7
+    steps:
+      - run:
+          name: install aws cli
+          command: |
+            sudo pip install awscli
+      - run:
+          name: download jq
+          command: |
+            #wget https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64
+            #mv jq-linux64 jq
+            sudo apt-get install jq
+      - run:
+          name: login
+          command: |
+            $(aws ecr get-login --no-include-email --region ap-northeast-1)
+      - run:
+          name: deploy
+          command: |
+            # TODO: use a more smarter OSS for service updating
+            aws ecs describe-task-definition --task-definition webapp-service | jq '.taskDefinition | { containerDefinition: .containerDefinitions }' > definition.json
+            aws ecs register-task-definition --family webapp-service --cli-input-json file://definition.json
+            aws ecs update-service --cluster sample-ecs-cluster --service webapp-service --task-definition webapp-service
+workflow:
+  version: 2
+  test:
+    job:
+      - build
+      - build:
+          requires:
+            - build
+          filters:
+            branches:
+              only: master
+      - deploy:
+          requres:
+            - build_image
+          filters:
+            branches:
+              only: master
