@@ -81,21 +81,3 @@ class TenantRelatedModel(models.Model):
 
     class Meta:
         abstract = True
-
-
-class UserWithTenant(factory.django.DjangoModelFactory):
-
-    class Meta:
-        model = User
-
-    username = 't.mizuno'
-
-
-class TenantWithUser(factory.django.DjangoModelFactory):
-
-    class Meta:
-        model = Tenant
-
-    name = 'AI-dea Inc.'
-    address = 'Ginza5-9-16'
-    relatedtenant = factory.RelatedFactory(UserWithTenant, 'tenant')
