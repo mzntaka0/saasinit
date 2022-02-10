@@ -7,7 +7,7 @@ verify_ssl = true
 flake8 = "*"
 
 [packages]
-Django = "==2.2.4"
+Django = "==2.2.27"
 Pillow = "==6.2.0"
 astroid = "==2.2.5"
 autopep8 = "==1.4.4"
